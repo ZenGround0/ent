@@ -1,4 +1,10 @@
+![ent logo](assets/old-tree.jpeg)
+## ent
+
 This is a tool for testing out state tree migrations on lotus chain data
+
+## Usage
+
 To get started you need data in a lotus directory at `.lotus`
 
 `ent migrate <state-cid>` does a migration and outputs the new state tree cid
