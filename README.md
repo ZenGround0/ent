@@ -1,4 +1,4 @@
-![ent logo](assets/old-tree.jpeg)
+![ent logo](assets/old-trees.jpeg)
 ## ent
 
 This is a tool for testing out state tree migrations on lotus chain data
