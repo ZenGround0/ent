@@ -14,7 +14,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-var dsPath = "~/.lotus/chain/datastore"
+var dsPath = "~/.lotus/datastore/chain"
 
 // Lifted from lotus/node/repo/fsrepo_ds.go
 func chainBadgerDs(path string) (datastore.Batching, error) {
