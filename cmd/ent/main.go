@@ -61,7 +61,8 @@ func runMigrateCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	store, err := lib.LoadCborStore(c.Context)
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,8 @@ func runValidateCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	store, err := lib.LoadCborStore(c.Context)
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err
 	}
@@ -110,7 +112,8 @@ func runRootsCmd(c *cli.Context) error {
 	}
 	// Read roots from lotus datastore
 	roots := make([]cid.Cid, num)
-	iter, err := lib.NewChainStateIterator(c.Context, bcid)
+	chn := lib.Chain{}
+	iter, err := chn.NewChainStateIterator(c.Context, bcid)
 	if err != nil {
 		return err
 	}

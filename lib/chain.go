@@ -16,6 +16,10 @@ import (
 
 var dsPath = "~/.lotus/datastore/chain"
 
+type Chain struct {
+	cachedBs blockstore.Blockstore
+}
+
 // Lifted from lotus/node/repo/fsrepo_ds.go
 func chainBadgerDs(path string) (datastore.Batching, error) {
 	opts := badger.DefaultOptions
@@ -27,7 +31,10 @@ func chainBadgerDs(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &opts)
 }
 
-func loadLotusChainBstore(ctx context.Context) (blockstore.Blockstore, error) {
+func (c *Chain) loadLotusChainBstore(ctx context.Context) (blockstore.Blockstore, error) {
+	if c.cachedBs != nil {
+		return c.cachedBs, nil
+	}
 	// load chain datastore
 	path, err := homedir.Expand(dsPath)
 	if err != nil {
@@ -42,8 +49,8 @@ func loadLotusChainBstore(ctx context.Context) (blockstore.Blockstore, error) {
 }
 
 // LoadCborStore loads the ~/.lotus chain datastore for chain traversal and state loading
-func LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
-	bs, err := loadLotusChainBstore(ctx)
+func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
+	bs, err := c.loadLotusChainBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +59,12 @@ func LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
 
 // ChainStateIterator moves from tip to genesis emiting parent state roots of blocks
 type ChainStateIterator struct {
+	bs        blockstore.Blockstore
 	currBlock *types.BlockHeader
 }
 
-func NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
-	bs, err := loadLotusChainBstore(ctx)
+func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
+	bs, err := c.loadLotusChainBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +81,7 @@ func NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIter
 
 	return &ChainStateIterator{
 		currBlock: blk,
+		bs: bs,
 	}, nil
 }
 
@@ -95,11 +104,7 @@ func (it *ChainStateIterator) Step(ctx context.Context) error {
 	}
 	parents := it.currBlock.Parents
 	// we don't care which, take the first one
-	bs, err := loadLotusChainBstore(ctx)
-	if err != nil {
-		return err
-	}
-	raw, err := bs.Get(parents[0])
+	raw, err := it.bs.Get(parents[0])
 	if err != nil {
 		return err
 	}
