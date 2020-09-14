@@ -118,7 +118,7 @@ func runRootsCmd(c *cli.Context) error {
 		return err
 	}
 	for i := 0; !iter.Done() && i < num; i++ {
-		roots = append(roots, iter.Val())
+		roots[i] = iter.Val()
 		if err := iter.Step(c.Context); err != nil {
 			return err
 		}
