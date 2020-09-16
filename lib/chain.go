@@ -15,6 +15,8 @@ import (
 )
 
 var lotusPath = "~/.lotus/datastore/chain"
+
+// currently unused but can be used for persisting data
 var entPath = "~/.ent/datastore/chain"
 
 type Chain struct {
@@ -46,15 +48,8 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 		return nil, err
 	}
 
-	// load ent chain datastore
-	entExpPath, err := homedir.Expand(entPath)
-	if err != nil {
-		return nil, err
-	}
-	entDS, err := chainBadgerDs(entExpPath)
-	if err != nil {
-		return nil, err 
-	}
+	// load ent chain datastore -- in memory
+	entDS := datastore.NewMapDatastore()
 	return NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS)), nil
 }
 
@@ -75,7 +70,7 @@ type ChainStateIterator struct {
 
 type IterVal struct {
 	Height int64
-	State cid.Cid
+	State  cid.Cid
 }
 
 func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
@@ -110,7 +105,7 @@ func (it *ChainStateIterator) Done() bool {
 // Return the parent state root of the current block
 func (it *ChainStateIterator) Val() IterVal {
 	return IterVal{
-		State: it.currBlock.ParentStateRoot,
+		State:  it.currBlock.ParentStateRoot,
 		Height: int64(it.currBlock.Height),
 	}
 }
