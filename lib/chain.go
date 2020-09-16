@@ -50,7 +50,8 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 
 	// load ent chain datastore -- in memory
 	entDS := datastore.NewMapDatastore()
-	return NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS)), nil
+	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS))
+	return c.cachedBs, nil
 }
 
 // LoadCborStore loads the ~/.lotus chain datastore for chain traversal and state loading
