@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -45,6 +46,10 @@ var validateCmd = &cli.Command{
 }
 
 func main() {
+	// pprof server
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	app := &cli.App{
 		Name:        "ent",
 		Usage:       "Test filecoin state tree migrations by running them",
