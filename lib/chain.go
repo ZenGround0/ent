@@ -14,7 +14,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-var dsPath = "~/.lotus/datastore/chain"
+var lotusPath = "~/.lotus/datastore/chain"
+var entPath = "~/.ent/datastore/chain"
 
 type Chain struct {
 	cachedBs blockstore.Blockstore
@@ -31,26 +32,35 @@ func chainBadgerDs(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &opts)
 }
 
-func (c *Chain) loadLotusChainBstore(ctx context.Context) (blockstore.Blockstore, error) {
+func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, error) {
 	if c.cachedBs != nil {
 		return c.cachedBs, nil
 	}
-	// load chain datastore
-	path, err := homedir.Expand(dsPath)
+	// load lotus chain datastore
+	lotusExpPath, err := homedir.Expand(lotusPath)
 	if err != nil {
 		return nil, err
 	}
-	ds, err := chainBadgerDs(path)
+	lotusDS, err := chainBadgerDs(lotusExpPath)
 	if err != nil {
 		return nil, err
 	}
-	return blockstore.NewBlockstore(ds), nil
 
+	// load ent chain datastore
+	entExpPath, err := homedir.Expand(entPath)
+	if err != nil {
+		return nil, err
+	}
+	entDS, err := chainBadgerDs(entExpPath)
+	if err != nil {
+		return nil, err 
+	}
+	return NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS)), nil
 }
 
 // LoadCborStore loads the ~/.lotus chain datastore for chain traversal and state loading
 func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
-	bs, err := c.loadLotusChainBstore(ctx)
+	bs, err := c.loadRedirectBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +74,7 @@ type ChainStateIterator struct {
 }
 
 func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
-	bs, err := c.loadLotusChainBstore(ctx)
+	bs, err := c.loadRedirectBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +91,7 @@ func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*Cha
 
 	return &ChainStateIterator{
 		currBlock: blk,
-		bs: bs,
+		bs:        bs,
 	}, nil
 }
 
