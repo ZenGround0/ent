@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/specs-actors/v2/actors/migration"
 	cid "github.com/ipfs/go-cid"
@@ -23,7 +24,18 @@ var rootsCmd = &cli.Command{
 var migrateCmd = &cli.Command{
 	Name:        "migrate",
 	Description: "migrate a filecoin v1 state root to v2",
-	Action:      runMigrateCmd,
+	Subcommands: []*cli.Command{
+		{
+			Name:   "one",
+			Usage:  "migrate a single state tree",
+			Action: runMigrateOneCmd,
+		},
+		{
+			Name:   "chain",
+			Usage:  "migrate all state trees from given chain head to genesis",
+			Action: runMigrateChainCmd,
+		},
+	},
 }
 
 var validateCmd = &cli.Command{
@@ -53,7 +65,7 @@ func main() {
 	}
 }
 
-func runMigrateCmd(c *cli.Context) error {
+func runMigrateOneCmd(c *cli.Context) error {
 	if !c.Args().Present() {
 		return xerrors.Errorf("not enough args, need state root to migrate")
 	}
@@ -66,11 +78,48 @@ func runMigrateCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	start := time.Now()
 	stateRootOut, err := migration.MigrateStateTree(c.Context, store, stateRootIn)
+	duration := time.Since(start)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s\n", stateRootOut)
+	fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+	return nil
+}
+
+func runMigrateChainCmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need chain head to migrate")
+	}
+	bcid, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	iter, err := chn.NewChainStateIterator(c.Context, bcid)
+	if err != nil {
+		return err
+	}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+	for !iter.Done() {
+		val := iter.Val()
+		start := time.Now()
+		stateRootOut, err := migration.MigrateStateTree(c.Context, store, val.State)
+		duration := time.Since(start)
+		if err != nil {
+			fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
+		} else {
+			fmt.Printf("%d -- %s => %s -- %v\n", val.Height, val.State, stateRootOut, duration)
+		}
+
+		if err := iter.Step(c.Context); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -118,7 +167,7 @@ func runRootsCmd(c *cli.Context) error {
 		return err
 	}
 	for i := 0; !iter.Done() && i < num; i++ {
-		roots[i] = iter.Val()
+		roots[i] = iter.Val().State
 		if err := iter.Step(c.Context); err != nil {
 			return err
 		}

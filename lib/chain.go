@@ -73,6 +73,11 @@ type ChainStateIterator struct {
 	currBlock *types.BlockHeader
 }
 
+type IterVal struct {
+	Height int64
+	State cid.Cid
+}
+
 func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
 	bs, err := c.loadRedirectBstore(ctx)
 	if err != nil {
@@ -103,8 +108,11 @@ func (it *ChainStateIterator) Done() bool {
 }
 
 // Return the parent state root of the current block
-func (it *ChainStateIterator) Val() cid.Cid {
-	return it.currBlock.ParentStateRoot
+func (it *ChainStateIterator) Val() IterVal {
+	return IterVal{
+		State: it.currBlock.ParentStateRoot,
+		Height: int64(it.currBlock.Height),
+	}
 }
 
 // Moves iterator backwards towards genesis.  Noop at genesis
