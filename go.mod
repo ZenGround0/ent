@@ -6,7 +6,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/filecoin-project/go-state-types v0.0.0-20200911004822-964d6c679cfc
 	github.com/filecoin-project/lotus v0.7.0
-	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200916061215-877e0416fd69
+	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200916194900-2b4536b8679b
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.4
