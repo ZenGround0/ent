@@ -158,7 +158,7 @@ func runValidateCmd(c *cli.Context) error {
 	fmt.Printf("Migration: %s => %s -- %v\n", stateRootIn, stateRootOut, duration)
 
 	adtStore := adt.WrapStore(c.Context, store)
-	actorsIn, err := states0.LoadTree(adtStore, stateRootIn)
+	actorsOut, err := states0.LoadTree(adtStore, stateRootOut)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func runValidateCmd(c *cli.Context) error {
 		return err
 	}
 	start = time.Now()
-	acc, err := states.CheckStateInvariants(*actorsIn, expectedBalance)
+	acc, err := states.CheckStateInvariants(*actorsOut, expectedBalance)
 	duration = time.Since(start)
 	if err != nil {
 		return err
