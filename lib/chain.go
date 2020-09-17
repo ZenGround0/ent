@@ -49,8 +49,7 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 	}
 
 	// load ent chain datastore -- in memory
-	entDS := datastore.NewMapDatastore()
-	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS))
+	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), NewThrowawayBlockstore())
 	return c.cachedBs, nil
 }
 
