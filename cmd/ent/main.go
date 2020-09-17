@@ -173,9 +173,9 @@ func runValidateCmd(c *cli.Context) error {
 		return err
 	}
 	if acc.IsEmpty() {
-		fmt.Printf("Validation: %s -- no errors -- %v", stateRootOut, duration)
+		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRootOut, duration)
 	} else {
-		fmt.Printf("Validation: %s -- errors: %s -- %v", stateRootOut, strings.Join(acc.Messages(), ", "), duration)
+		fmt.Printf("Validation: %s -- errors: %s -- %v\n", stateRootOut, strings.Join(acc.Messages(), ", "), duration)
 	}
 
 	return nil
