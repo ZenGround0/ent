@@ -5,13 +5,17 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 
 	"os"
 	"sort"
 	"strconv"
 	"time"
 
+	states0 "github.com/filecoin-project/specs-actors/actors/states"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration"
+	"github.com/filecoin-project/specs-actors/v2/actors/states"
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"github.com/zenground0/ent/lib"
@@ -143,13 +147,37 @@ func runValidateCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	start := time.Now()
 	stateRootOut, err := migration.MigrateStateTree(c.Context, store, stateRootIn)
+	duration := time.Since(start)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Migrated State Root: %s\n", stateRootOut)
-	// TODO when specs actors creates an entry point state validation function
-	// call it here on the new state
+
+	fmt.Printf("Migration: %s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+
+	adtStore := adt.WrapStore(c.Context, store)
+	actorsIn, err := states0.LoadTree(adtStore, stateRootIn)
+	if err != nil {
+		return err
+	}
+	expectedBalance, err := migration.InputTreeBalance(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+	start = time.Now()
+	acc, err := states.CheckStateInvariants(*actorsIn, expectedBalance)
+	duration = time.Since(start)
+	if err != nil {
+		return err
+	}
+	if acc.IsEmpty() {
+		fmt.Printf("Validation: %s -- no errors -- %v", stateRootOut, duration)
+	} else {
+		fmt.Printf("Validation: %s -- errors: %s -- %v", stateRootOut, strings.Join(acc.Messages(), ", "), duration)
+	}
+
 	return nil
 }
 
