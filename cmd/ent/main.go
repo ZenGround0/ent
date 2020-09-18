@@ -41,6 +41,9 @@ var migrateCmd = &cli.Command{
 			Name:   "chain",
 			Usage:  "migrate all state trees from given chain head to genesis",
 			Action: runMigrateChainCmd,
+			Flags: []cli.Flag{
+				&cli.IntFlag{Name: "skip", Aliases: []string{"k"}},
+			},
 		},
 	},
 }
@@ -116,15 +119,18 @@ func runMigrateChainCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	k := c.Int("skip")
 	for !iter.Done() {
 		val := iter.Val()
-		start := time.Now()
-		stateRootOut, err := migration.MigrateStateTree(c.Context, store, val.State)
-		duration := time.Since(start)
-		if err != nil {
-			fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
-		} else {
-			fmt.Printf("%d -- %s => %s -- %v\n", val.Height, val.State, stateRootOut, duration)
+		if val.Height%int64(k) == int64(0) { // skip every k epochs
+			start := time.Now()
+			stateRootOut, err := migration.MigrateStateTree(c.Context, store, val.State)
+			duration := time.Since(start)
+			if err != nil {
+				fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
+			} else {
+				fmt.Printf("%d -- %s => %s -- %v\n", val.Height, val.State, stateRootOut, duration)
+			}
 		}
 
 		if err := iter.Step(c.Context); err != nil {
