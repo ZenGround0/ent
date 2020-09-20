@@ -246,17 +246,22 @@ func runDebtsCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("burnt funds balance: %s\n", bf)
+
 
 	available, err := migration.InputTreeMinerAvailableBalance(c.Context, store, stateRootIn)
 	if err != nil {
 		return err
 	}
 	// filter out positive balances
+	totalDebt := big.Zero()
 	for addr, balance := range available {
 		if balance.LessThan(big.Zero()) {
-			fmt.Printf("miner %s: %s\n", addr, balance.Neg())
+			debt := balance.Neg()
+			fmt.Printf("miner %s: %s\n", addr, debt)
+			totalDebt = big.Add(totalDebt, debt)
 		}
 	}
+	fmt.Printf("burnt funds balance: %s\n", bf)
+	fmt.Printf("total debt:          %s\n", totalDebt)
 	return nil
 }
