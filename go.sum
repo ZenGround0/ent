@@ -266,6 +266,7 @@ github.com/filecoin-project/specs-actors/v2 v2.0.0-20200917152916-d48c45d15f1d h
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200917152916-d48c45d15f1d/go.mod h1:vV1UOOKlmdKg4dy3YKixtJtVf15WMuZsS6KgKRDxkWg=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200917172006-fa8b2a900929 h1:U+iPxbKR1Z7EqJidIX704qTKs+DmXRkMHwV3IbaoKRo=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200917172006-fa8b2a900929/go.mod h1:vV1UOOKlmdKg4dy3YKixtJtVf15WMuZsS6KgKRDxkWg=
+github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918035954-4caac0a9b252 h1:0vOZo6xlVDyPhuRS3ArrAy1fml7H2FEY65IFx6rwp3o=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918160855-552863990007 h1:R7Vyz4dv60hGn5kbMWLHRPoiVJDeVzNkV/roGaksWVU=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918160855-552863990007/go.mod h1:OSNnPqb6HXA2dSOP4QBJ0kynqd0h+7Fqa1/MWvyDiXI=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918185059-67c6002b5b2c h1:gokf/M0TEbYyo8OonjSNBkSuHUom7g97Q+Yy9L+nLAI=
@@ -300,6 +301,8 @@ github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918214402-0f9804f8f26c h
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200918214402-0f9804f8f26c/go.mod h1:OSNnPqb6HXA2dSOP4QBJ0kynqd0h+7Fqa1/MWvyDiXI=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200919214423-9fdbe7ff5690 h1:MOLP52qTE7LB7XocExXOoBuhtQx+DohymOzyCqAqziA=
 github.com/filecoin-project/specs-actors/v2 v2.0.0-20200919214423-9fdbe7ff5690/go.mod h1:OSNnPqb6HXA2dSOP4QBJ0kynqd0h+7Fqa1/MWvyDiXI=
+github.com/filecoin-project/specs-actors/v2 v2.0.0-20200920232732-74fe58638031 h1:PpdPOdrwQYF9z8EGkivaB2DqcRNd2CuvmOFJQPN5tkE=
+github.com/filecoin-project/specs-actors/v2 v2.0.0-20200920232732-74fe58638031/go.mod h1:OSNnPqb6HXA2dSOP4QBJ0kynqd0h+7Fqa1/MWvyDiXI=
 github.com/filecoin-project/specs-storage v0.1.1-0.20200907031224-ed2e5cd13796/go.mod h1:nJRRM7Aa9XVvygr3W9k6xGF46RWzr2zxF/iGoAIfA/g=
 github.com/filecoin-project/test-vectors/schema v0.0.1/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=

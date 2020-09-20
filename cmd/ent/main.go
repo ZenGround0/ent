@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration"
@@ -54,6 +55,12 @@ var validateCmd = &cli.Command{
 	Action:      runValidateCmd,
 }
 
+var debtsCmd = &cli.Command{
+	Name:        "debts",
+	Description: "display all miner actors in debt and total burnt funds",
+	Action:      runDebtsCmd,
+}
+
 func main() {
 	// pprof server
 	go func() {
@@ -67,6 +74,7 @@ func main() {
 			migrateCmd,
 			validateCmd,
 			rootsCmd,
+			debtsCmd,
 		},
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
@@ -216,6 +224,39 @@ func runRootsCmd(c *cli.Context) error {
 	// Output roots
 	for _, root := range roots {
 		fmt.Printf("%s\n", root)
+	}
+	return nil
+}
+
+func runDebtsCmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need state root to migrate")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+
+	bf, err := migration.InputTreeBurntFunds(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("burnt funds balance: %s\n", bf)
+
+	available, err := migration.InputTreeMinerAvailableBalance(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+	// filter out positive balances
+	for addr, balance := range available {
+		if balance.LessThan(big.Zero()) {
+			fmt.Printf("miner %s: %s\n", addr, balance.Neg())
+		}
 	}
 	return nil
 }
