@@ -1,6 +1,9 @@
 GO_BIN ?= go
-all: build install
+all: deps install
 .PHONY: all
+
+ffi:
+	git submodule update --init --recursive && cd extern/filecoin-ffi && $(MAKE)
 
 build:
 	$(GO_BIN) build ./cmd/ent
