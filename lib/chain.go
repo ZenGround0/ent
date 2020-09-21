@@ -56,7 +56,7 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 		return nil, err
 	}
 
-	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(lotusDS), blockstore.NewBlockstore(entDS))
+	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(entDS), blockstore.NewBlockstore(lotusDS))
 	return c.cachedBs, nil
 }
 

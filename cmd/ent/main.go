@@ -130,7 +130,7 @@ func runMigrateChainCmd(c *cli.Context) error {
 	k := c.Int("skip")
 	for !iter.Done() {
 		val := iter.Val()
-		if val.Height%int64(k) == int64(0) { // skip every k epochs
+		if k == 0 || val.Height%int64(k) == int64(0) { // skip every k epochs
 			start := time.Now()
 			stateRootOut, err := migration.MigrateStateTree(c.Context, store, val.State)
 			duration := time.Since(start)
@@ -246,7 +246,6 @@ func runDebtsCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 
 	available, err := migration.InputTreeMinerAvailableBalance(c.Context, store, stateRootIn)
 	if err != nil {
