@@ -64,6 +64,14 @@ func (c *Chain) PreLoadStateTree(ctx context.Context, stateRoot cid.Cid) error {
 	return lvm.Copy(bs, bs, stateRoot)
 }
 
+func (c *Chain) FlushBufferedState(ctx context.Context, stateRoot cid.Cid) error {
+	bs, err := c.loadBufferedBstore(ctx)
+	if err != nil {
+		return err
+	}
+	return bs.FlushFromBuffer(stateRoot)
+}
+
 // ChainStateIterator moves from tip to genesis emiting parent state roots of blocks
 type ChainStateIterator struct {
 	bs        blockstore.Blockstore

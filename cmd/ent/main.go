@@ -116,6 +116,12 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+	writeStart := time.Now()
+	if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
+		return xerrors.Errorf("failed to flush state tree to disk: %w", err)
+	}
+	writeDuration := time.Since(writeStart)
+	fmt.Printf("%s buffer flush time: %v\n", writeDuration)
 	return nil
 }
 
@@ -148,6 +154,12 @@ func runMigrateChainCmd(c *cli.Context) error {
 			} else {
 				fmt.Printf("%d -- %s => %s -- %v\n", val.Height, val.State, stateRootOut, duration)
 			}
+			writeStart := time.Now()
+			if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
+				fmt.Printf("%s buffer flush failed: %s", err, stateRootOut, err)
+			}
+			writeDuration := time.Since(writeStart)
+			fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
 		}
 
 		if err := iter.Step(c.Context); err != nil {
