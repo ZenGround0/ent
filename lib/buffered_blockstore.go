@@ -113,5 +113,5 @@ func (rb *BufferedBlockstore) LoadToBuffer(c cid.Cid) error {
 }
 
 func (rb *BufferedBlockstore) FlushFromBuffer(c cid.Cid) error {
-	return lvm.Copy(rb.buffer, rb.write, c)
+	return lvm.Copy(rb, rb.write, c)
 }
