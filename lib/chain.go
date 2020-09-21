@@ -47,14 +47,15 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 	if err != nil {
 		return nil, err
 	}
-	entExpPath, err := homedir.Expand(entPath)
-	if err != nil {
-		return nil, err
-	}
-	entDS, err := chainBadgerDs(entExpPath)
-	if err != nil {
-		return nil, err
-	}
+	// entExpPath, err := homedir.Expand(entPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// entDS, err := chainBadgerDs(entExpPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	entDS := datastore.NewMapDatastore()
 
 	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(entDS), blockstore.NewBlockstore(lotusDS))
 	return c.cachedBs, nil
