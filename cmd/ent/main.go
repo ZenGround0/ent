@@ -96,6 +96,15 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	chn := lib.Chain{}
+	// preload
+	preLoadStart := time.Now()
+	err = chn.PreLoadStateTree(ctx, stateRootIn)
+	if err != nil {
+		return err
+	}
+	preLoadDuration := time.Since(preLoadStart)
+	fmt.Printf("%s preload == %v\n", stateRootIn, preLoadDuration)
+
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err

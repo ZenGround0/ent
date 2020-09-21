@@ -6,6 +6,7 @@ import (
 	dgbadger "github.com/dgraph-io/badger/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
+	lvm "github.com/filecoin-project/lotus/chain/vm"
 	lbstore "github.com/filecoin-project/lotus/lib/blockstore"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
@@ -69,6 +70,18 @@ func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
 		return nil, err
 	}
 	return cbornode.NewCborStore(bs), nil
+}
+
+func (c *Chain) PreLoadStateTree(ctx context.Context, stateRoot cid.Cid) error {
+	bs, err := c.loadRedirectBstore(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Because of the underlying redirect blockstore structure
+	// this will read from slow lotus datastore and write to fast
+	// in memory ent datastore.
+	return lvm.Copy(bs, bs, stateRoot)
 }
 
 // ChainStateIterator moves from tip to genesis emiting parent state roots of blocks
