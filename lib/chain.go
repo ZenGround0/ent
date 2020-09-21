@@ -20,7 +20,7 @@ var lotusPath = "~/.lotus/datastore/chain"
 var entPath = "~/.ent/datastore/chain"
 
 type Chain struct {
-	cachedBs blockstore.Blockstore
+	cachedBs *BufferedBlockstore
 }
 
 // Lifted from lotus/node/repo/fsrepo_ds.go
@@ -34,7 +34,7 @@ func chainBadgerDs(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &opts)
 }
 
-func (c *Chain) loadBufferedBstore(ctx context.Context) (blockstore.Blockstore, error) {
+func (c *Chain) loadBufferedBstore(ctx context.Context) (*BufferedBlockstore, error) {
 	if c.cachedBs != nil {
 		return c.cachedBs, nil
 	}

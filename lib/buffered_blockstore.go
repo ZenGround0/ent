@@ -9,6 +9,8 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
+
+	lvm "github.com/filecoin-project/lotus/chain/vm"
 )
 
 // BufferedBlockstore pushes all writes to an in memory cache blockstore and reads
@@ -104,4 +106,12 @@ func (rb *BufferedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, 
 func (rb *BufferedBlockstore) HashOnRead(enabled bool) {
 	rb.buffer.HashOnRead(enabled)
 	rb.read.HashOnRead(enabled)
+}
+
+func (rb *BufferedBlockstore) LoadToBuffer(c cid.Cid) error {
+	return lvm.Copy(rb.read, rb.buffer, c)
+}
+
+func (rb *BufferedBlockstore) FlushFromBuffer(c cid.Cid) error {
+	return lvm.Copy(rb.buffer, rb.write, c)
 }
