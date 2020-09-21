@@ -121,7 +121,7 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return xerrors.Errorf("failed to flush state tree to disk: %w", err)
 	}
 	writeDuration := time.Since(writeStart)
-	fmt.Printf("%s buffer flush time: %v\n", writeDuration)
+	fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
 	return nil
 }
 
