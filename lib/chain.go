@@ -75,7 +75,7 @@ func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
 func (c *Chain) PreLoadStateTree(ctx context.Context, stateRoot cid.Cid) error {
 	bs, err := c.loadRedirectBstore(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Because of the underlying redirect blockstore structure

@@ -98,7 +98,7 @@ func runMigrateOneCmd(c *cli.Context) error {
 	chn := lib.Chain{}
 	// preload
 	preLoadStart := time.Now()
-	err = chn.PreLoadStateTree(ctx, stateRootIn)
+	err = chn.PreLoadStateTree(c.Context, stateRootIn)
 	if err != nil {
 		return err
 	}

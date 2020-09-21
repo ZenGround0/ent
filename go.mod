@@ -3,11 +3,11 @@ module github.com/zenground0/ent
 go 1.13
 
 require (
-	github.com/dgraph-io/badger/v2 v2.0.3
+	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f // indirect
 	github.com/filecoin-project/go-state-types v0.0.0-20200911004822-964d6c679cfc
-	github.com/filecoin-project/lotus v0.7.0
-	github.com/filecoin-project/specs-actors v0.9.9
+	github.com/filecoin-project/lotus v0.7.1
+	github.com/filecoin-project/specs-actors v0.9.10
 	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200920232732-74fe58638031
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
