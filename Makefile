@@ -1,5 +1,5 @@
 GO_BIN ?= go
-all: deps install
+all: ffi install
 .PHONY: all
 
 ffi:
