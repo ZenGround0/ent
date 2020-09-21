@@ -72,7 +72,7 @@ func (rb *RedirectBlockstore) Put(b blocks.Block) error {
 }
 
 func (rb *RedirectBlockstore) PutMany(bs []blocks.Block) error {
-	return rb.PutMany(bs)
+	return rb.readWriteStore.PutMany(bs)
 }
 
 func (rb *RedirectBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
