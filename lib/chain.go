@@ -6,6 +6,7 @@ import (
 	dgbadger "github.com/dgraph-io/badger/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
+	lbstore "github.com/filecoin-project/lotus/lib/blockstore"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -55,9 +56,9 @@ func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, 
 	// if err != nil {
 	// 	return nil, err
 	// }
-	entDS := datastore.NewMapDatastore()
+	entBS := lbstore.NewTemporarySync()
 
-	c.cachedBs = NewRedirectBlockstore(blockstore.NewBlockstore(entDS), blockstore.NewBlockstore(lotusDS))
+	c.cachedBs = NewRedirectBlockstore(entBS, blockstore.NewBlockstore(lotusDS))
 	return c.cachedBs, nil
 }
 
