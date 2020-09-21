@@ -7,13 +7,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	lvm "github.com/filecoin-project/lotus/chain/vm"
-	lbstore "github.com/filecoin-project/lotus/lib/blockstore"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipld-cbor"
-	"github.com/mitchellh/go-homedir"
 )
 
 var lotusPath = "~/.lotus/datastore/chain"
@@ -36,36 +34,18 @@ func chainBadgerDs(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &opts)
 }
 
-func (c *Chain) loadRedirectBstore(ctx context.Context) (blockstore.Blockstore, error) {
+func (c *Chain) loadBufferedBstore(ctx context.Context) (blockstore.Blockstore, error) {
 	if c.cachedBs != nil {
 		return c.cachedBs, nil
 	}
-	// load lotus chain datastore
-	lotusExpPath, err := homedir.Expand(lotusPath)
-	if err != nil {
-		return nil, err
-	}
-	lotusDS, err := chainBadgerDs(lotusExpPath)
-	if err != nil {
-		return nil, err
-	}
-	// entExpPath, err := homedir.Expand(entPath)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// entDS, err := chainBadgerDs(entExpPath)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	entBS := lbstore.NewTemporarySync()
-
-	c.cachedBs = NewRedirectBlockstore(entBS, blockstore.NewBlockstore(lotusDS))
-	return c.cachedBs, nil
+	var err error
+	c.cachedBs, err = NewBufferedBlockstore(lotusPath, entPath)
+	return c.cachedBs, err
 }
 
 // LoadCborStore loads the ~/.lotus chain datastore for chain traversal and state loading
 func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
-	bs, err := c.loadRedirectBstore(ctx)
+	bs, err := c.loadBufferedBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +53,7 @@ func (c *Chain) LoadCborStore(ctx context.Context) (cbornode.IpldStore, error) {
 }
 
 func (c *Chain) PreLoadStateTree(ctx context.Context, stateRoot cid.Cid) error {
-	bs, err := c.loadRedirectBstore(ctx)
+	bs, err := c.loadBufferedBstore(ctx)
 	if err != nil {
 		return err
 	}
@@ -96,7 +76,7 @@ type IterVal struct {
 }
 
 func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*ChainStateIterator, error) {
-	bs, err := c.loadRedirectBstore(ctx)
+	bs, err := c.loadBufferedBstore(ctx)
 	if err != nil {
 		return nil, err
 	}
