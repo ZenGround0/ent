@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"runtime/pprof"
 	"strings"
 
 	"os"
@@ -70,6 +71,12 @@ func main() {
 		Name:        "ent",
 		Usage:       "Test filecoin state tree migrations by running them",
 		Description: "Test filecoin state tree migrations by running them",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "cpuprofile",
+				Usage: "run cpuprofile and write results to provided file path",
+			},
+		},
 		Commands: []*cli.Command{
 			migrateCmd,
 			validateCmd,
@@ -91,6 +98,11 @@ func runMigrateOneCmd(c *cli.Context) error {
 	if !c.Args().Present() {
 		return xerrors.Errorf("not enough args, need state root to migrate")
 	}
+	cleanUp, err := cpuProfile(c)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
 	stateRootIn, err := cid.Decode(c.Args().First())
 	if err != nil {
 		return err
@@ -120,6 +132,11 @@ func runMigrateChainCmd(c *cli.Context) error {
 	if !c.Args().Present() {
 		return xerrors.Errorf("not enough args, need chain head to migrate")
 	}
+	cleanUp, err := cpuProfile(c)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
 	bcid, err := cid.Decode(c.Args().First())
 	if err != nil {
 		return err
@@ -164,6 +181,12 @@ func runValidateCmd(c *cli.Context) error {
 	if !c.Args().Present() {
 		return xerrors.Errorf("not enough args, need state root to migrate")
 	}
+	cleanUp, err := cpuProfile(c)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
 	stateRootIn, err := cid.Decode(c.Args().First())
 	if err != nil {
 		return err
@@ -275,4 +298,29 @@ func runDebtsCmd(c *cli.Context) error {
 	fmt.Printf("burnt funds balance: %s\n", bf)
 	fmt.Printf("total debt:          %s\n", totalDebt)
 	return nil
+}
+
+func cpuProfile(c *cli.Context) (func(), error) {
+	val := c.String("cpuprofile")
+	if val == "" { // flag not set do nothing and defer nothing
+		return func() {}, nil
+	}
+
+	// val is output path of cpuprofile file
+	f, err := os.Create(val)
+	if err != nil {
+		return nil, err
+	}
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return func() {
+		pprof.StopCPUProfile()
+		err := f.Close()
+		if err != nil {
+			fmt.Printf("failed to close cpuprofile file %s: %s\n", val, err)
+		}
+	}, nil
 }
