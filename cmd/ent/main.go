@@ -38,6 +38,9 @@ var migrateCmd = &cli.Command{
 			Name:   "one",
 			Usage:  "migrate a single state tree",
 			Action: runMigrateOneCmd,
+			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "preload"},
+			},
 		},
 		{
 			Name:   "chain",
@@ -107,15 +110,26 @@ func runMigrateOneCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	chn := lib.Chain{}
-	fmt.Printf("start preload\n")
-	loadStart := time.Now()
-	err = chn.LoadToReadOnlyBuffer(c.Context, stateRootIn)
-	loadDuration := time.Since(loadStart)
-	if err != nil {
-		return err
+	preloadStateRoot := cid.Undef
+	preloadStr := c.String("preload")
+	if preloadStr != "" {
+		preloadStateRoot, err = cid.Decode(preloadStr)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Printf("%s preload time: %v\n", stateRootIn, loadDuration)
+
+	chn := lib.Chain{}
+	if !preloadStateRoot.Equals(cid.Undef) {
+		fmt.Printf("start preload of %s\n", preloadStateRoot)
+		loadStart := time.Now()
+		err = chn.LoadToReadOnlyBuffer(c.Context, preloadStateRoot)
+		loadDuration := time.Since(loadStart)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s preload time: %v\n", stateRootIn, loadDuration)
+	}
 
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
