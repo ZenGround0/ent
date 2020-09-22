@@ -1,5 +1,5 @@
 GO_BIN ?= go
-all: ffi install
+all: ffi install build
 .PHONY: all
 
 ffi:
