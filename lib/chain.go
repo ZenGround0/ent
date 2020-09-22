@@ -56,7 +56,7 @@ func (c *Chain) FlushBufferedState(ctx context.Context, stateRoot cid.Cid) error
 	if err != nil {
 		return err
 	}
-	return bs.FlushFromBuffer(stateRoot)
+	return bs.FlushFromBuffer(ctx, stateRoot)
 }
 
 // ChainStateIterator moves from tip to genesis emiting parent state roots of blocks

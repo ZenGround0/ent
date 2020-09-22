@@ -4,6 +4,7 @@ import (
 	"context"
 
 	lbstore "github.com/filecoin-project/lotus/lib/blockstore"
+	block "github.com/ipfs/go-block-format"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -112,6 +113,29 @@ func (rb *BufferedBlockstore) LoadToBuffer(c cid.Cid) error {
 	return lvm.Copy(rb.read, rb.buffer, c)
 }
 
-func (rb *BufferedBlockstore) FlushFromBuffer(c cid.Cid) error {
-	return lvm.Copy(rb, rb.write, c)
+func (rb *BufferedBlockstore) FlushFromBuffer(ctx context.Context, c cid.Cid) error {
+	allCh, err := rb.buffer.AllKeysChan(ctx)
+	if err != nil {
+		return err
+	}
+	var batch []block.Block
+	for c := range allCh {
+		blk, err := rb.buffer.Get(c)
+		if err != nil {
+			return xerrors.Errorf("buffer get in flush", err)
+		}
+		batch = append(batch, blk)
+		if len(batch) > 100 {
+			if err := rb.write.PutMany(batch); err != nil {
+				return xerrors.Errorf("batch put in flush: %w", err)
+			}
+			batch = batch[:0]
+		}
+	}
+	if len(batch) > 0 {
+		if err := rb.write.PutMany(batch); err != nil {
+			return xerrors.Errorf("batch put in flush: %w", err)
+		}
+	}
+	return nil
 }
