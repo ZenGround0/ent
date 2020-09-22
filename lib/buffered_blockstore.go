@@ -19,9 +19,10 @@ import (
 // It has an extra method for flushing data from the in memory blockstore to a
 // third on disk badger datastore backed blockstore.
 type BufferedBlockstore struct {
-	buffer blockstore.Blockstore
-	read   blockstore.Blockstore
-	write  blockstore.Blockstore
+	roBuffer blockstore.Blockstore
+	buffer   blockstore.Blockstore
+	read     blockstore.Blockstore
+	write    blockstore.Blockstore
 }
 
 func NewBufferedBlockstore(readLotusPath, writeEntPath string) (*BufferedBlockstore, error) {
@@ -44,9 +45,10 @@ func NewBufferedBlockstore(readLotusPath, writeEntPath string) (*BufferedBlockst
 	}
 
 	return &BufferedBlockstore{
-		buffer: lbstore.NewTemporarySync(),
-		read:   blockstore.NewBlockstore(lotusDS),
-		write:  blockstore.NewBlockstore(entDS),
+		roBuffer: lbstore.NewTemporary(),
+		buffer:   lbstore.NewTemporarySync(),
+		read:     blockstore.NewBlockstore(lotusDS),
+		write:    blockstore.NewBlockstore(entDS),
 	}, nil
 }
 
@@ -55,6 +57,11 @@ func (rb *BufferedBlockstore) DeleteBlock(c cid.Cid) error {
 }
 
 func (rb *BufferedBlockstore) Has(c cid.Cid) (bool, error) {
+	if has, err := rb.roBuffer.Has(c); err != nil {
+		return false, err
+	} else if has {
+		return true, nil
+	}
 	if has, err := rb.buffer.Has(c); err != nil {
 		return false, err
 	} else if has {
@@ -69,6 +76,11 @@ func (rb *BufferedBlockstore) Has(c cid.Cid) (bool, error) {
 }
 
 func (rb *BufferedBlockstore) Get(c cid.Cid) (blocks.Block, error) {
+	if b, err := rb.roBuffer.Get(c); err == nil {
+		return b, nil
+	} else if err != blockstore.ErrNotFound {
+		return nil, err
+	}
 	if b, err := rb.buffer.Get(c); err == nil {
 		return b, nil
 	} else if err != blockstore.ErrNotFound {
@@ -83,6 +95,11 @@ func (rb *BufferedBlockstore) Get(c cid.Cid) (blocks.Block, error) {
 }
 
 func (rb *BufferedBlockstore) GetSize(c cid.Cid) (int, error) {
+	if s, err := rb.roBuffer.GetSize(c); err == nil {
+		return s, nil
+	} else if err != blockstore.ErrNotFound {
+		return 0, err
+	}
 	if s, err := rb.buffer.GetSize(c); err == nil {
 		return s, nil
 	} else if err != blockstore.ErrNotFound {
@@ -115,8 +132,8 @@ func (rb *BufferedBlockstore) HashOnRead(enabled bool) {
 	rb.write.HashOnRead(enabled)
 }
 
-func (rb *BufferedBlockstore) LoadToBuffer(c cid.Cid) error {
-	return lvm.Copy(rb.read, rb.buffer, c)
+func (rb *BufferedBlockstore) LoadToReadOnlyBuffer(c cid.Cid) error {
+	return lvm.Copy(rb.read, rb.roBuffer, c)
 }
 
 func (rb *BufferedBlockstore) FlushFromBuffer(ctx context.Context, c cid.Cid) error {

@@ -108,6 +108,14 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	chn := lib.Chain{}
+	loadStart := time.Now()
+	err = chn.LoadToReadOnlyBuffer(c.Context, stateRootIn)
+	loadDuration := time.Since(loadStart)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s preload time: %v\n", stateRootIn, loadDuration)
+
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err
