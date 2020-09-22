@@ -55,40 +55,45 @@ func (rb *BufferedBlockstore) DeleteBlock(c cid.Cid) error {
 }
 
 func (rb *BufferedBlockstore) Has(c cid.Cid) (bool, error) {
-	rwHas, err := rb.buffer.Has(c)
-	if err != nil {
+	if has, err := rb.buffer.Has(c); err != nil {
 		return false, err
+	} else if has {
+		return true, nil
 	}
-	if rwHas {
-		return true, err
-	}
-	rHas, err := rb.read.Has(c)
-	if err != nil {
+	if has, err := rb.read.Has(c); err != nil {
 		return false, err
+	} else if has {
+		return true, nil
 	}
-	return rHas, nil
+	return rb.write.Has(c)
 }
 
 func (rb *BufferedBlockstore) Get(c cid.Cid) (blocks.Block, error) {
-	b, err := rb.buffer.Get(c)
-	if err == nil {
+	if b, err := rb.buffer.Get(c); err == nil {
 		return b, nil
-	}
-	if err != blockstore.ErrNotFound {
+	} else if err != blockstore.ErrNotFound {
 		return nil, err
 	}
-	return rb.read.Get(c)
+	if b, err := rb.read.Get(c); err == nil {
+		return b, nil
+	} else if err != blockstore.ErrNotFound {
+		return nil, err
+	}
+	return rb.write.Get(c)
 }
 
 func (rb *BufferedBlockstore) GetSize(c cid.Cid) (int, error) {
-	s, err := rb.buffer.GetSize(c)
-	if err == nil {
+	if s, err := rb.buffer.GetSize(c); err == nil {
 		return s, nil
-	}
-	if err != blockstore.ErrNotFound {
+	} else if err != blockstore.ErrNotFound {
 		return 0, err
 	}
-	return rb.read.GetSize(c)
+	if s, err := rb.read.GetSize(c); err == nil {
+		return s, nil
+	} else if err != blockstore.ErrNotFound {
+		return 0, err
+	}
+	return rb.write.GetSize(c)
 }
 
 func (rb *BufferedBlockstore) Put(b blocks.Block) error {
@@ -107,6 +112,7 @@ func (rb *BufferedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, 
 func (rb *BufferedBlockstore) HashOnRead(enabled bool) {
 	rb.buffer.HashOnRead(enabled)
 	rb.read.HashOnRead(enabled)
+	rb.write.HashOnRead(enabled)
 }
 
 func (rb *BufferedBlockstore) LoadToBuffer(c cid.Cid) error {
