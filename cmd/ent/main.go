@@ -108,6 +108,7 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	chn := lib.Chain{}
+	fmt.Printf("start preload\n")
 	loadStart := time.Now()
 	err = chn.LoadToReadOnlyBuffer(c.Context, stateRootIn)
 	loadDuration := time.Since(loadStart)
