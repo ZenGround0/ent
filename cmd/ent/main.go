@@ -226,27 +226,33 @@ func runMigrateV0Cmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	v := iter.Val()
-	stateRootIn := v.State
-	epoch := abi.ChainEpoch(v.Height)
-
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err
 	}
-	start := time.Now()
-	stateRootOut, err := migration0.MigrateStateTree(c.Context, store, stateRootIn, epoch)
-	duration := time.Since(start)
-	if err != nil {
-		return err
+
+	for !iter.Done() {
+		v := iter.Val()
+		stateRootIn := v.State
+		epoch := abi.ChainEpoch(v.Height)
+		start := time.Now()
+		stateRootOut, err := migration0.MigrateStateTree(c.Context, store, stateRootIn, epoch)
+		duration := time.Since(start)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+		writeStart := time.Now()
+		if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
+			return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
+		}
+		writeDuration := time.Since(writeStart)
+		fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
+
+		if err := iter.Step(c.Context); err != nil {
+			return err
+		}
 	}
-	fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
-	writeStart := time.Now()
-	if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
-		return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
-	}
-	writeDuration := time.Since(writeStart)
-	fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
 	return nil
 }
 
