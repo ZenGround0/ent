@@ -241,7 +241,7 @@ func runMigrateV0Cmd(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+		fmt.Printf("%d: %s => %s -- %v\n", v.Height, stateRootIn, stateRootOut, duration)
 		writeStart := time.Now()
 		if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
 			return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
