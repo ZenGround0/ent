@@ -13,7 +13,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	migration0 "github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration"
@@ -49,6 +51,11 @@ var migrateCmd = &cli.Command{
 			Flags: []cli.Flag{
 				&cli.IntFlag{Name: "skip", Aliases: []string{"k"}},
 			},
+		},
+		{
+			Name:   "v0",
+			Usage:  "run a v0 migration on the parent state of the provided header",
+			Action: runMigrateV0Cmd,
 		},
 	},
 }
@@ -198,6 +205,48 @@ func runMigrateChainCmd(c *cli.Context) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func runMigrateV0Cmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need header cid to migrate")
+	}
+	cleanUp, err := cpuProfile(c)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+	bcid, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	iter, err := chn.NewChainStateIterator(c.Context, bcid)
+	if err != nil {
+		return err
+	}
+	v := iter.Val()
+	stateRootIn := v.State
+	epoch := abi.ChainEpoch(v.Height)
+
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	stateRootOut, err := migration0.MigrateStateTree(c.Context, store, stateRootIn, epoch)
+	duration := time.Since(start)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+	writeStart := time.Now()
+	if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
+		return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
+	}
+	writeDuration := time.Since(writeStart)
+	fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
 	return nil
 }
 
