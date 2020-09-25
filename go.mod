@@ -7,7 +7,7 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f // indirect
 	github.com/filecoin-project/go-state-types v0.0.0-20200911004822-964d6c679cfc
 	github.com/filecoin-project/lotus v0.7.1
-	github.com/filecoin-project/specs-actors v0.9.11-0.20200925195302-b171a194f000
+	github.com/filecoin-project/specs-actors v0.9.11-0.20200925201705-5f21516f8839
 	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200920232732-74fe58638031
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
