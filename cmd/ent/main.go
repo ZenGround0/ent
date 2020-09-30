@@ -5,25 +5,24 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"runtime/pprof"
-	"strings"
-
 	"os"
+	"runtime/pprof"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	migration0 "github.com/filecoin-project/specs-actors/actors/migration/nv3"
-	states0 "github.com/filecoin-project/specs-actors/actors/states"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/specs-actors/v2/actors/migration"
-	"github.com/filecoin-project/specs-actors/v2/actors/states"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	migration2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
+	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"github.com/zenground0/ent/lib"
 	"golang.org/x/xerrors"
+
+	"github.com/zenground0/ent/lib"
 )
 
 var rootsCmd = &cli.Command{
@@ -144,7 +143,7 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	start := time.Now()
-	stateRootOut, err := migration.MigrateStateTree(c.Context, store, stateRootIn)
+	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn)
 	duration := time.Since(start)
 	if err != nil {
 		return err
@@ -186,7 +185,7 @@ func runMigrateChainCmd(c *cli.Context) error {
 		val := iter.Val()
 		if k == 0 || val.Height%int64(k) == int64(0) { // skip every k epochs
 			start := time.Now()
-			stateRootOut, err := migration.MigrateStateTree(c.Context, store, val.State)
+			stateRootOut, err := migration2.MigrateStateTree(c.Context, store, val.State)
 			duration := time.Since(start)
 			if err != nil {
 				fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
@@ -277,7 +276,7 @@ func runValidateCmd(c *cli.Context) error {
 	}
 
 	start := time.Now()
-	stateRootOut, err := migration.MigrateStateTree(c.Context, store, stateRootIn)
+	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn)
 	duration := time.Since(start)
 	if err != nil {
 		return err
@@ -285,17 +284,17 @@ func runValidateCmd(c *cli.Context) error {
 
 	fmt.Printf("Migration: %s => %s -- %v\n", stateRootIn, stateRootOut, duration)
 
-	adtStore := adt.WrapStore(c.Context, store)
-	actorsOut, err := states0.LoadTree(adtStore, stateRootOut)
+	adtStore := adt0.WrapStore(c.Context, store)
+	actorsOut, err := states2.LoadTree(adtStore, stateRootOut)
 	if err != nil {
 		return err
 	}
-	expectedBalance, err := migration.InputTreeBalance(c.Context, store, stateRootIn)
+	expectedBalance, err := migration2.InputTreeBalance(c.Context, store, stateRootIn)
 	if err != nil {
 		return err
 	}
 	start = time.Now()
-	acc, err := states.CheckStateInvariants(*actorsOut, expectedBalance)
+	acc, err := states2.CheckStateInvariants(actorsOut, expectedBalance)
 	duration = time.Since(start)
 	if err != nil {
 		return err
@@ -303,7 +302,7 @@ func runValidateCmd(c *cli.Context) error {
 	if acc.IsEmpty() {
 		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRootOut, duration)
 	} else {
-		fmt.Printf("Validation: %s -- errors: %s -- %v\n", stateRootOut, strings.Join(acc.Messages(), ", "), duration)
+		fmt.Printf("Validation: %s -- with errors -- %v\n%s\n", stateRootOut, duration, strings.Join(acc.Messages(), "\n"))
 	}
 
 	return nil
@@ -356,12 +355,12 @@ func runDebtsCmd(c *cli.Context) error {
 		return err
 	}
 
-	bf, err := migration.InputTreeBurntFunds(c.Context, store, stateRootIn)
+	bf, err := migration2.InputTreeBurntFunds(c.Context, store, stateRootIn)
 	if err != nil {
 		return err
 	}
 
-	available, err := migration.InputTreeMinerAvailableBalance(c.Context, store, stateRootIn)
+	available, err := migration2.InputTreeMinerAvailableBalance(c.Context, store, stateRootIn)
 	if err != nil {
 		return err
 	}
