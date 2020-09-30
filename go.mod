@@ -8,7 +8,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.0.0-20200928172055-2df22083d8ab
 	github.com/filecoin-project/lotus v0.7.1
 	github.com/filecoin-project/specs-actors v0.9.12-0.20200927154118-1d65899b204a
-	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200930035834-7115a78cb9a1
+	github.com/filecoin-project/specs-actors/v2 v2.0.0-20200930190148-f43ae04a6d14
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.4
