@@ -132,8 +132,8 @@ func (rb *BufferedBlockstore) HashOnRead(enabled bool) {
 	rb.write.HashOnRead(enabled)
 }
 
-func (rb *BufferedBlockstore) LoadToReadOnlyBuffer(c cid.Cid) error {
-	return lvm.Copy(rb.read, rb.roBuffer, c)
+func (rb *BufferedBlockstore) LoadToReadOnlyBuffer(ctx context.Context, c cid.Cid) error {
+	return lvm.Copy(ctx, rb.read, rb.roBuffer, c)
 }
 
 func (rb *BufferedBlockstore) FlushFromBuffer(ctx context.Context, c cid.Cid) error {

@@ -56,7 +56,7 @@ func (c *Chain) LoadToReadOnlyBuffer(ctx context.Context, stateRoot cid.Cid) err
 	if err != nil {
 		return err
 	}
-	return bs.LoadToReadOnlyBuffer(stateRoot)
+	return bs.LoadToReadOnlyBuffer(ctx, stateRoot)
 }
 
 func (c *Chain) FlushBufferedState(ctx context.Context, stateRoot cid.Cid) error {
