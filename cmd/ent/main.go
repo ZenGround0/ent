@@ -116,11 +116,11 @@ func runMigrateOneCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	hRaw, err := strconv.Atoi(c.Args().Get(1))
-	if err != nil {
-		return err
-	}
-	height := abi.ChainEpoch(int64(hRaw))
+	//hRaw, err := strconv.Atoi(c.Args().Get(1))
+	//if err != nil {
+	//	return err
+	//}
+	//height := abi.ChainEpoch(int64(hRaw))
 	preloadStateRoot := cid.Undef
 	preloadStr := c.String("preload")
 	if preloadStr != "" {
@@ -147,7 +147,7 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	start := time.Now()
-	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn, height, migration2.DefaultConfig())
+	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn, migration2.DefaultConfig())
 	duration := time.Since(start)
 	if err != nil {
 		return err
@@ -192,8 +192,8 @@ func runMigrateChainCmd(c *cli.Context) error {
 			// The migration operates on the parent state computed at epoch k and epoch k
 			// In the case of > 1 null blocks this won't exactly match the state that lotus
 			// migrates because we don't apply cron transitions first.
-			height := val.Height - int64(1)
-			stateRootOut, err := migration2.MigrateStateTree(c.Context, store, val.State, abi.ChainEpoch(height), migration2.DefaultConfig())
+			//height := val.Height - int64(1)
+			stateRootOut, err := migration2.MigrateStateTree(c.Context, store, val.State, migration2.DefaultConfig())
 			duration := time.Since(start)
 			if err != nil {
 				fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
@@ -277,11 +277,11 @@ func runValidateCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	hRaw, err := strconv.Atoi(c.Args().Get(1))
-	if err != nil {
-		return err
-	}
-	height := abi.ChainEpoch(int64(hRaw))
+	//hRaw, err := strconv.Atoi(c.Args().Get(1))
+	//if err != nil {
+	//	return err
+	//}
+	//height := abi.ChainEpoch(int64(hRaw))
 	chn := lib.Chain{}
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
@@ -289,7 +289,7 @@ func runValidateCmd(c *cli.Context) error {
 	}
 
 	start := time.Now()
-	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn, height, migration2.DefaultConfig())
+	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn, migration2.DefaultConfig())
 	duration := time.Since(start)
 	if err != nil {
 		return err
