@@ -58,8 +58,8 @@ var validateCmd = &cli.Command{
 	Description: "validate a statetree by checking lots of invariants",
 	Subcommands: []*cli.Command{
 		{
-			Name:   "one",
-			Usage:  "validate a single state tree",
+			Name:   "v2",
+			Usage:  "validate a single v2 state tree",
 			Action: runValidateCmd,
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "preload"},
