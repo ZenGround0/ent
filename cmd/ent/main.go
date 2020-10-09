@@ -201,11 +201,8 @@ func runMigrateChainCmd(c *cli.Context) error {
 		val := iter.Val()
 		if k == 0 || val.Height%int64(k) == int64(0) { // skip every k epochs
 			start := time.Now()
-			// The migration operates on the parent state computed at epoch k and epoch k
-			// In the case of > 1 null blocks this won't exactly match the state that lotus
-			// migrates because we don't apply cron transitions first.
-			height := val.Height - int64(1)
-			stateRootOut, err := migration2.MigrateStateTree(c.Context, store, val.State, abi.ChainEpoch(height), migration2.DefaultConfig())
+			height := abi.ChainEpoch(val.Height)
+			stateRootOut, err := migration2.MigrateStateTree(c.Context, store, val.State, height, migration2.DefaultConfig())
 			duration := time.Since(start)
 			if err != nil {
 				fmt.Printf("%d -- %s => %s !! %v\n", val.Height, val.State, stateRootOut, err)
@@ -221,7 +218,7 @@ func runMigrateChainCmd(c *cli.Context) error {
 
 			// Optional Post-Migration State Validation
 			if c.Bool("validate") {
-				err := validate(c.Context, store, abi.ChainEpoch(height), stateRootOut)
+				err := validate(c.Context, store, height, stateRootOut)
 				if err != nil {
 					return err
 				}
@@ -276,22 +273,22 @@ func runRootsCmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	// Read roots from lotus datastore
-	roots := make([]cid.Cid, num)
+	// Read roots and epoch of creation from lotus datastore
+	roots := make([]lib.IterVal, num)
 	chn := lib.Chain{}
 	iter, err := chn.NewChainStateIterator(c.Context, bcid)
 	if err != nil {
 		return err
 	}
 	for i := 0; !iter.Done() && i < num; i++ {
-		roots[i] = iter.Val().State
+		roots[i] = iter.Val()
 		if err := iter.Step(c.Context); err != nil {
 			return err
 		}
 	}
 	// Output roots
-	for _, root := range roots {
-		fmt.Printf("%s\n", root)
+	for _, val := range roots {
+		fmt.Printf("Epoch %d: %s} \n", val.Height, val.State)
 	}
 	return nil
 }
