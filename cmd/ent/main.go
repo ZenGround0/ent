@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,22 +15,17 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	migration0 "github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	migration2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/zenground0/ent/lib"
 )
-
-var rootsCmd = &cli.Command{
-	Name:        "roots",
-	Description: "provide state tree root cids for migrating",
-	Action:      runRootsCmd,
-}
 
 var migrateCmd = &cli.Command{
 	Name:        "migrate",
@@ -41,6 +37,7 @@ var migrateCmd = &cli.Command{
 			Action: runMigrateOneCmd,
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "preload"},
+				&cli.BoolFlag{Name: "validate"},
 			},
 		},
 		{
@@ -48,27 +45,44 @@ var migrateCmd = &cli.Command{
 			Usage:  "migrate all state trees from given chain head to genesis",
 			Action: runMigrateChainCmd,
 			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "preload"},
 				&cli.IntFlag{Name: "skip", Aliases: []string{"k"}},
+				&cli.BoolFlag{Name: "validate"},
 			},
-		},
-		{
-			Name:   "v0",
-			Usage:  "DEPRECATED run a v0 migration on the parent state of the provided header",
-			Action: runMigrateV0Cmd,
 		},
 	},
 }
 
 var validateCmd = &cli.Command{
 	Name:        "validate",
-	Description: "validate a migration by checking lots of invariants",
-	Action:      runValidateCmd,
+	Description: "validate a statetree by checking lots of invariants",
+	Subcommands: []*cli.Command{
+		{
+			Name:   "one",
+			Usage:  "validate a single state tree",
+			Action: runValidateCmd,
+			Flags: []cli.Flag{
+				&cli.StringFlag{Name: "preload"},
+			},
+		},
+	},
 }
 
-var debtsCmd = &cli.Command{
-	Name:        "debts",
-	Description: "display all miner actors in debt and total burnt funds",
-	Action:      runDebtsCmd,
+var infoCmd = &cli.Command{
+	Name:        "info",
+	Description: "report blockchain and state info",
+	Subcommands: []*cli.Command{
+		{
+			Name:        "roots",
+			Description: "provide state tree root cids for migrating",
+			Action:      runRootsCmd,
+		},
+		{
+			Name:        "debts",
+			Description: "display all miner actors in debt and total burnt funds",
+			Action:      runDebtsCmd,
+		},
+	},
 }
 
 func main() {
@@ -89,8 +103,7 @@ func main() {
 		Commands: []*cli.Command{
 			migrateCmd,
 			validateCmd,
-			rootsCmd,
-			debtsCmd,
+			infoCmd,
 		},
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
@@ -105,7 +118,7 @@ func main() {
 
 func runMigrateOneCmd(c *cli.Context) error {
 	if c.Args().Len() != 2 {
-		return xerrors.Errorf("not enough args, need state root to migrate and height")
+		return xerrors.Errorf("not enough args, need state root to migrate and height of state")
 	}
 	cleanUp, err := cpuProfile(c)
 	if err != nil {
@@ -121,27 +134,12 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	height := abi.ChainEpoch(int64(hRaw))
-	preloadStateRoot := cid.Undef
-	preloadStr := c.String("preload")
-	if preloadStr != "" {
-		preloadStateRoot, err = cid.Decode(preloadStr)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("successful preload :%s\n", preloadStateRoot)
-	}
-
 	chn := lib.Chain{}
-	if !preloadStateRoot.Equals(cid.Undef) {
-		fmt.Printf("start preload of %s\n", preloadStateRoot)
-		loadStart := time.Now()
-		err = chn.LoadToReadOnlyBuffer(c.Context, preloadStateRoot)
-		loadDuration := time.Since(loadStart)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s preload time: %v\n", stateRootIn, loadDuration)
-	}
+
+	preloadStr := c.String("preload")
+	maybePreload(c.Context, &chn, preloadStr)
+
+	// Migrate State
 	store, err := chn.LoadCborStore(c.Context)
 	if err != nil {
 		return err
@@ -153,12 +151,22 @@ func runMigrateOneCmd(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("%s => %s -- %v\n", stateRootIn, stateRootOut, duration)
+
+	// Measure flush time
 	writeStart := time.Now()
 	if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
 		return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
 	}
 	writeDuration := time.Since(writeStart)
 	fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
+
+	if c.Bool("validate") {
+		err := validate(c.Context, store, height, stateRootOut)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -176,6 +184,10 @@ func runMigrateChainCmd(c *cli.Context) error {
 		return err
 	}
 	chn := lib.Chain{}
+
+	preloadStr := c.String("preload")
+	maybePreload(c.Context, &chn, preloadStr)
+
 	iter, err := chn.NewChainStateIterator(c.Context, bcid)
 	if err != nil {
 		return err
@@ -206,55 +218,15 @@ func runMigrateChainCmd(c *cli.Context) error {
 			}
 			writeDuration := time.Since(writeStart)
 			fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
-		}
 
-		if err := iter.Step(c.Context); err != nil {
-			return err
+			// Optional Post-Migration State Validation
+			if c.Bool("validate") {
+				err := validate(c.Context, store, abi.ChainEpoch(height), stateRootOut)
+				if err != nil {
+					return err
+				}
+			}
 		}
-	}
-	return nil
-}
-
-func runMigrateV0Cmd(c *cli.Context) error {
-	if !c.Args().Present() {
-		return xerrors.Errorf("not enough args, need header cid to migrate")
-	}
-	cleanUp, err := cpuProfile(c)
-	if err != nil {
-		return err
-	}
-	defer cleanUp()
-	bcid, err := cid.Decode(c.Args().First())
-	if err != nil {
-		return err
-	}
-	chn := lib.Chain{}
-	iter, err := chn.NewChainStateIterator(c.Context, bcid)
-	if err != nil {
-		return err
-	}
-	store, err := chn.LoadCborStore(c.Context)
-	if err != nil {
-		return err
-	}
-
-	for !iter.Done() {
-		v := iter.Val()
-		stateRootIn := v.State
-		epoch := abi.ChainEpoch(v.Height)
-		start := time.Now()
-		stateRootOut, err := migration0.MigrateStateTree(c.Context, store, stateRootIn, epoch)
-		duration := time.Since(start)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%d: %s => %s -- %v\n", v.Height, stateRootIn, stateRootOut, duration)
-		writeStart := time.Now()
-		if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
-			return xerrors.Errorf("failed to flush state tree to disk: %w\n", err)
-		}
-		writeDuration := time.Since(writeStart)
-		fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
 
 		if err := iter.Step(c.Context); err != nil {
 			return err
@@ -273,7 +245,7 @@ func runValidateCmd(c *cli.Context) error {
 	}
 	defer cleanUp()
 
-	stateRootIn, err := cid.Decode(c.Args().First())
+	stateRoot, err := cid.Decode(c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -288,37 +260,7 @@ func runValidateCmd(c *cli.Context) error {
 		return err
 	}
 
-	start := time.Now()
-	stateRootOut, err := migration2.MigrateStateTree(c.Context, store, stateRootIn, height, migration2.DefaultConfig())
-	duration := time.Since(start)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Migration: %s => %s -- %v\n", stateRootIn, stateRootOut, duration)
-
-	adtStore := adt0.WrapStore(c.Context, store)
-	actorsOut, err := states2.LoadTree(adtStore, stateRootOut)
-	if err != nil {
-		return err
-	}
-	expectedBalance, err := migration2.InputTreeBalance(c.Context, store, stateRootIn)
-	if err != nil {
-		return err
-	}
-	start = time.Now()
-	acc, err := states2.CheckStateInvariants(actorsOut, expectedBalance)
-	duration = time.Since(start)
-	if err != nil {
-		return err
-	}
-	if acc.IsEmpty() {
-		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRootOut, duration)
-	} else {
-		fmt.Printf("Validation: %s -- with errors -- %v\n%s\n", stateRootOut, duration, strings.Join(acc.Messages(), "\n"))
-	}
-
-	return nil
+	return validate(c.Context, store, height, stateRoot)
 }
 
 func runRootsCmd(c *cli.Context) error {
@@ -391,6 +333,8 @@ func runDebtsCmd(c *cli.Context) error {
 	return nil
 }
 
+/* Helpers */
+
 func cpuProfile(c *cli.Context) (func(), error) {
 	val := c.String("cpuprofile")
 	if val == "" { // flag not set do nothing and defer nothing
@@ -414,4 +358,42 @@ func cpuProfile(c *cli.Context) (func(), error) {
 			fmt.Printf("failed to close cpuprofile file %s: %s\n", val, err)
 		}
 	}, nil
+}
+
+func maybePreload(ctx context.Context, chn *lib.Chain, preloadStr string) error {
+	if preloadStr == "" { // no preload
+		return nil
+	}
+
+	preloadStateRoot, err := cid.Decode(preloadStr)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("start preload of %s\n", preloadStateRoot)
+	loadStart := time.Now()
+	err = chn.LoadToReadOnlyBuffer(ctx, preloadStateRoot)
+	loadDuration := time.Since(loadStart)
+	fmt.Printf("%s preload time: %v\n", preloadStateRoot, loadDuration)
+	return err
+}
+
+func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.ChainEpoch, stateRoot cid.Cid) error {
+	adtStore := adt0.WrapStore(ctx, store)
+	tree, err := states2.LoadTree(adtStore, stateRoot)
+	if err != nil {
+		return err
+	}
+	expectedBalance := builtin2.TotalFilecoin
+	start := time.Now()
+	acc, err := states2.CheckStateInvariants(tree, expectedBalance, priorEpoch)
+	duration := time.Since(start)
+	if err != nil {
+		return err
+	}
+	if acc.IsEmpty() {
+		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRoot, duration)
+	} else {
+		fmt.Printf("Validation: %s -- with errors -- %v\n%s\n", stateRoot, duration, strings.Join(acc.Messages(), "\n"))
+	}
+	return nil
 }
