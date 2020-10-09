@@ -82,6 +82,11 @@ var infoCmd = &cli.Command{
 			Description: "display all miner actors in debt and total burnt funds",
 			Action:      runDebtsCmd,
 		},
+		{
+			Name:        "balances",
+			Description: "display all miner actor locked funds and available balances",
+			Action:      runBalancesCmd,
+		},
 	},
 }
 
@@ -288,7 +293,7 @@ func runRootsCmd(c *cli.Context) error {
 	}
 	// Output roots
 	for _, val := range roots {
-		fmt.Printf("Epoch %d: %s} \n", val.Height, val.State)
+		fmt.Printf("Epoch %d: %s \n", val.Height, val.State)
 	}
 	return nil
 }
@@ -327,6 +332,33 @@ func runDebtsCmd(c *cli.Context) error {
 	}
 	fmt.Printf("burnt funds balance: %s\n", bf)
 	fmt.Printf("total debt:          %s\n", totalDebt)
+	return nil
+}
+
+func runBalancesCmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need state root to migrate")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+
+	balances, err := lib.V0TreeMinerBalances(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+	// Print miner address, locked balance, and available balance (balance - lb - pcd - ip)
+	for addr, bi := range balances {
+		minerLiabilities := big.Sum(bi.LockedFunds, bi.PreCommitDeposits, bi.InitialPledge)
+		availableBalance := big.Sub(bi.Balance, minerLiabilities)
+		fmt.Printf("%s,%v,%v\n", addr, bi.LockedFunds, availableBalance)
+	}
 	return nil
 }
 
