@@ -214,7 +214,7 @@ func runMigrateChainCmd(c *cli.Context) error {
 			}
 			writeStart := time.Now()
 			if err := chn.FlushBufferedState(c.Context, stateRootOut); err != nil {
-				fmt.Printf("%s buffer flush failed: %s\n", err, stateRootOut, err)
+				fmt.Printf("%s buffer flush failed: %s\n", err, stateRootOut)
 			}
 			writeDuration := time.Since(writeStart)
 			fmt.Printf("%s buffer flush time: %v\n", stateRootOut, writeDuration)
