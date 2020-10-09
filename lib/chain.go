@@ -11,6 +11,7 @@ import (
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 )
 
 var lotusPath = "~/.lotus/datastore/chain"
@@ -69,8 +70,9 @@ func (c *Chain) FlushBufferedState(ctx context.Context, stateRoot cid.Cid) error
 
 // ChainStateIterator moves from tip to genesis emiting parent state roots of blocks
 type ChainStateIterator struct {
-	bs        blockstore.Blockstore
-	currBlock *types.BlockHeader
+	bs         blockstore.Blockstore
+	currBlock  *types.BlockHeader
+	currParent *types.BlockHeader
 }
 
 type IterVal struct {
@@ -93,25 +95,30 @@ func (c *Chain) NewChainStateIterator(ctx context.Context, tipCid cid.Cid) (*Cha
 	if err != nil {
 		return nil, err
 	}
+	parent, err := getParent(blk, bs)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ChainStateIterator{
-		currBlock: blk,
-		bs:        bs,
+		currBlock:  blk,
+		currParent: parent,
+		bs:         bs,
 	}, nil
 }
 
 func (it *ChainStateIterator) Done() bool {
-	if it.currBlock.Height == abi.ChainEpoch(0) {
+	if it.currParent.Height == abi.ChainEpoch(0) {
 		return true
 	}
 	return false
 }
 
-// Return the parent state root of the current block
+// Return the parent state root and parent height of the current block
 func (it *ChainStateIterator) Val() IterVal {
 	return IterVal{
 		State:  it.currBlock.ParentStateRoot,
-		Height: int64(it.currBlock.Height),
+		Height: int64(it.currParent.Height),
 	}
 }
 
@@ -120,16 +127,25 @@ func (it *ChainStateIterator) Step(ctx context.Context) error {
 	if it.Done() { // noop
 		return nil
 	}
-	parents := it.currBlock.Parents
+	var err error
+	parent := it.currParent
+	it.currParent, err = getParent(it.currParent, it.bs)
+	if err != nil {
+		return err
+	}
+	it.currBlock = parent
+	return err
+}
+
+func getParent(blk *types.BlockHeader, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+	parents := blk.Parents
+	if len(parents) == 0 {
+		return nil, xerrors.Errorf("cannot get parent from input blk, is it genesis?")
+	}
 	// we don't care which, take the first one
-	raw, err := it.bs.Get(parents[0])
+	raw, err := bs.Get(parents[0])
 	if err != nil {
-		return err
+		return nil, err
 	}
-	nextBlock, err := types.DecodeBlock(raw.RawData())
-	if err != nil {
-		return err
-	}
-	it.currBlock = nextBlock
-	return nil
+	return types.DecodeBlock(raw.RawData())
 }
