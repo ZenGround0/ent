@@ -344,6 +344,10 @@ func runFilterV0Cmd(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	err = chn.FlushBufferedState(c.Context, stateRootFiltered)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("filtered state root: %s\n", stateRootFiltered)
 	return nil
 }
@@ -372,6 +376,10 @@ func runFilterV2Cmd(c *cli.Context) error {
 	}
 
 	stateRootFiltered, err := lib.FilterTreeV2(c.Context, store, stateRootIn, addrs...)
+	if err != nil {
+		return err
+	}
+	err = chn.FlushBufferedState(c.Context, stateRootFiltered)
 	if err != nil {
 		return err
 	}
