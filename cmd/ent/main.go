@@ -126,6 +126,7 @@ func main() {
 		Commands: []*cli.Command{
 			migrateCmd,
 			validateCmd,
+			filterCmd,
 			infoCmd,
 		},
 	}
