@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -86,6 +87,23 @@ var infoCmd = &cli.Command{
 			Name:        "balances",
 			Description: "display all miner actor locked funds and available balances",
 			Action:      runBalancesCmd,
+		},
+	},
+}
+
+var filterCmd = &cli.Command{
+	Name:        "filter",
+	Description: "store only singletons and specified actors in a new filtered tree",
+	Subcommands: []*cli.Command{
+		{
+			Name:        "v0",
+			Description: "v0 tree -> v0 tree",
+			Action:      runFilterV2Cmd,
+		},
+		{
+			Name:        "v2",
+			Description: "v2 tree -> v2 tree",
+			Action:      runFilterV0Cmd,
 		},
 	},
 }
@@ -295,6 +313,68 @@ func runRootsCmd(c *cli.Context) error {
 	for _, val := range roots {
 		fmt.Printf("Epoch %d: %s \n", val.Height, val.State)
 	}
+	return nil
+}
+
+func runFilterV0Cmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("must provide state tree to filter")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	args := c.Args().Slice()
+	addrs := make([]addr.Address, 0)
+	for _, addrStr := range args[1:] {
+		a, err := addr.NewFromString(addrStr)
+		if err != nil {
+			return err
+		}
+		addrs = append(addrs, a)
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+
+	stateRootFiltered, err := lib.FilterTreeV0(c.Context, store, stateRootIn, addrs...)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("filtered state root: %s\n", stateRootFiltered)
+	return nil
+}
+
+func runFilterV2Cmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("must provide state tree to filter")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	args := c.Args().Slice()
+	addrs := make([]addr.Address, 0)
+	for _, addrStr := range args[1:] {
+		a, err := addr.NewFromString(addrStr)
+		if err != nil {
+			return err
+		}
+		addrs = append(addrs, a)
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+
+	stateRootFiltered, err := lib.FilterTreeV2(c.Context, store, stateRootIn, addrs...)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("filtered state root: %s\n", stateRootFiltered)
 	return nil
 }
 
