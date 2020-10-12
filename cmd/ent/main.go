@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/types"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	migration2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
@@ -408,7 +409,14 @@ func maybePreload(ctx context.Context, chn *lib.Chain, preloadStr string) error 
 
 func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.ChainEpoch, stateRoot cid.Cid) error {
 	adtStore := adt0.WrapStore(ctx, store)
-	tree, err := states2.LoadTree(adtStore, stateRoot)
+
+	var treeTop types.StateRoot
+	err := store.Get(ctx, stateRoot, &treeTop)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("version: %v\n", treeTop.Version)
+	tree, err := states2.LoadTree(adtStore, treeTop.Actors)
 	if err != nil {
 		return xerrors.Errorf("failed to load tree: %w", err)
 	}
