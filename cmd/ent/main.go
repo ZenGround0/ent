@@ -410,14 +410,14 @@ func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.Chai
 	adtStore := adt0.WrapStore(ctx, store)
 	tree, err := states2.LoadTree(adtStore, stateRoot)
 	if err != nil {
-		return fmt.Errorf("failed to load tree: %w", err)
+		return xerrors.Errorf("failed to load tree: %w", err)
 	}
 	expectedBalance := builtin2.TotalFilecoin
 	start := time.Now()
 	acc, err := states2.CheckStateInvariants(tree, expectedBalance, priorEpoch)
 	duration := time.Since(start)
 	if err != nil {
-		return fmt.Errorf("failed to check state invariants", err)
+		return xerrors.Errorf("failed to check state invariants: %w", err)
 	}
 	if acc.IsEmpty() {
 		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRoot, duration)
