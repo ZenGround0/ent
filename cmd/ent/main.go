@@ -417,7 +417,7 @@ func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.Chai
 	acc, err := states2.CheckStateInvariants(tree, expectedBalance, priorEpoch)
 	duration := time.Since(start)
 	if err != nil {
-		return xerrors.Errorf("failed to check state invariants: %w", err)
+		return xerrors.Errorf("failed to check state invariants", err)
 	}
 	if acc.IsEmpty() {
 		fmt.Printf("Validation: %s -- no errors -- %v\n", stateRoot, duration)
