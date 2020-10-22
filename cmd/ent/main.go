@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -91,6 +92,18 @@ var infoCmd = &cli.Command{
 	},
 }
 
+var exportCmd = &cli.Command{
+	Name:        "export",
+	Description: "export high-cardinality collections",
+	Subcommands: []*cli.Command{
+		{
+			Name:        "sectors",
+			Description: "exports all on-chain sectors",
+			Action:      runExportSectorsCmd,
+		},
+	},
+}
+
 func main() {
 	// pprof server
 	go func() {
@@ -110,6 +123,7 @@ func main() {
 			migrateCmd,
 			validateCmd,
 			infoCmd,
+			exportCmd,
 		},
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
@@ -301,7 +315,7 @@ func runRootsCmd(c *cli.Context) error {
 
 func runDebtsCmd(c *cli.Context) error {
 	if !c.Args().Present() {
-		return xerrors.Errorf("not enough args, need state root to migrate")
+		return xerrors.Errorf("not enough args, need state root")
 	}
 	stateRootIn, err := cid.Decode(c.Args().First())
 	if err != nil {
@@ -338,7 +352,7 @@ func runDebtsCmd(c *cli.Context) error {
 
 func runBalancesCmd(c *cli.Context) error {
 	if !c.Args().Present() {
-		return xerrors.Errorf("not enough args, need state root to migrate")
+		return xerrors.Errorf("not enough args, need state root")
 	}
 	stateRootIn, err := cid.Decode(c.Args().First())
 	if err != nil {
@@ -359,6 +373,49 @@ func runBalancesCmd(c *cli.Context) error {
 		minerLiabilities := big.Sum(bi.LockedFunds, bi.PreCommitDeposits, bi.InitialPledge)
 		availableBalance := big.Sub(bi.Balance, minerLiabilities)
 		fmt.Printf("%s,%v,%v\n", addr, bi.LockedFunds, availableBalance)
+	}
+	return nil
+}
+
+func runExportSectorsCmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need state root")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+
+	tree, err := loadStateTree(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+
+	sectors, err := lib.ExportSectors(c.Context, adt0.WrapStore(c.Context, store), tree)
+	if err != nil {
+		return err
+	}
+
+	// Print JSON representation of sector infos, one per line.
+	keepGoing := true
+	for keepGoing {
+		sinfo, ok := <-sectors
+		j, err := json.Marshal(sinfo)
+		if err != nil {
+			return err
+		}
+		if _, err = os.Stdout.Write(j); err != nil {
+			return err
+		}
+		if _, err = os.Stdout.Write([]byte{'\n'}); err != nil {
+			return err
+		}
+		keepGoing = ok
 	}
 	return nil
 }
@@ -408,15 +465,7 @@ func maybePreload(ctx context.Context, chn *lib.Chain, preloadStr string) error 
 }
 
 func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.ChainEpoch, stateRoot cid.Cid) error {
-	adtStore := adt0.WrapStore(ctx, store)
-
-	var treeTop types.StateRoot
-	err := store.Get(ctx, stateRoot, &treeTop)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("version: %v\n", treeTop.Version)
-	tree, err := states2.LoadTree(adtStore, treeTop.Actors)
+	tree, err := loadStateTree(ctx, store, stateRoot)
 	if err != nil {
 		return xerrors.Errorf("failed to load tree: %w", err)
 	}
@@ -433,4 +482,16 @@ func validate(ctx context.Context, store cbornode.IpldStore, priorEpoch abi.Chai
 		fmt.Printf("Validation: %s -- with errors -- %v\n%s\n", stateRoot, duration, strings.Join(acc.Messages(), "\n"))
 	}
 	return nil
+}
+
+func loadStateTree(ctx context.Context, store cbornode.IpldStore, stateRoot cid.Cid) (*states2.Tree, error) {
+	adtStore := adt0.WrapStore(ctx, store)
+	var treeTop types.StateRoot
+	err := store.Get(ctx, stateRoot, &treeTop)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = fmt.Fprintf(os.Stderr, "State root version: %v\n", treeTop.Version)
+	tree, err := states2.LoadTree(adtStore, treeTop.Actors)
+	return tree, nil
 }
