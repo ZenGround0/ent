@@ -20,9 +20,7 @@ type SectorInfo struct {
 
 const channelBufferSize = 100
 
-// V0TreeMinerBalancse returns a map of every miner's balance info
-// at the provided state tree.  It is used for displaying and validating miner
-// info.
+// ExportSectors returns a channel iterating over all sector infos in miner actor state
 func ExportSectors(ctx context.Context, store adt.Store, actorsIn *states.Tree) (chan *SectorInfo, error) {
 	out := make(chan *SectorInfo, channelBufferSize)
 
