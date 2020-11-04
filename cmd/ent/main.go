@@ -22,7 +22,7 @@ import (
 	migration2 "github.com/filecoin-project/specs-actors/v2/actors/migration"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -88,6 +88,11 @@ var infoCmd = &cli.Command{
 			Name:        "balances",
 			Description: "display all miner actor locked funds and available balances",
 			Action:      runBalancesCmd,
+		},
+		{
+			Name:        "hamt-size",
+			Description: "Measure the sizes of all singleton actor HAMTs",
+			Action:      runHAMTSizeCmd,
 		},
 	},
 }
@@ -375,6 +380,26 @@ func runBalancesCmd(c *cli.Context) error {
 		fmt.Printf("%s,%v,%v\n", addr, bi.LockedFunds, availableBalance)
 	}
 	return nil
+}
+
+func runHAMTSizeCmd(c *cli.Context) error {
+	if !c.Args().Present() {
+		return xerrors.Errorf("not enough args, need state root")
+	}
+	stateRootIn, err := cid.Decode(c.Args().First())
+	if err != nil {
+		return err
+	}
+	chn := lib.Chain{}
+	store, err := chn.LoadCborStore(c.Context)
+	if err != nil {
+		return err
+	}
+	tree, err := loadStateTree(c.Context, store, stateRootIn)
+	if err != nil {
+		return err
+	}
+	return lib.PrintHAMTSizes(c.Context, store, tree)
 }
 
 func runExportSectorsCmd(c *cli.Context) error {
